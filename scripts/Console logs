@@ -1,0 +1,12 @@
+(.venv) PS C:\Users\610183253\Documents\new calibration> & "c:\Users\610183253\Documents\new calibration\.venv\Scripts\python.exe" "c:/Users/610183253/Documents/new calibration/scripts/import_excel.py"
+--- 🚀 Starting Local Calibration Pipeline Sync ---
+Reading target sheet: calibration_template_v2.xlsx
+Parsed 5 data rows from Excel.
+Connecting to local PostgreSQL instance ('CalTest')...
+  ✓ Synchronized Serial: 17139
+  ✓ Synchronized Serial: 17156
+  ✓ Synchronized Serial: 17043
+  ✓ Synchronized Serial: 17042
+  ✓ Synchronized Serial: 17157
+
+--- 🎉 Pipeline Complete: Successfully updated 5/5 metrics in your local database! ---
