@@ -6,7 +6,7 @@ To scale the system to other manufacturing parts, we need to design new Excel te
 
 ---
 
-## 📐 Layout Architecture Rules
+ Layout Architecture Rules
 
 When designing new part templates, follow these strict constraints to avoid breaking the automated Python migration script:
 1. **Row 1 is the Master Header:** Row 1 must contain the exact column names. No blank spaces are allowed in the header row—use lowercase text with underscores only (e.g., `gage_type`, `serial_number`).
@@ -15,7 +15,7 @@ When designing new part templates, follow these strict constraints to avoid brea
 
 ---
 
-## 🗂️ Target Core Blueprint Reference (0-Indexed Column Map)
+ Target Core Blueprint Reference (0-Indexed Column Map)
 
 Use this structural map of our existing, verified part layout to design or match identical processing logic for upcoming part families:
 
@@ -28,5 +28,5 @@ Use this structural map of our existing, verified part layout to design or match
 
 ---
 
-## 🎯 Task Request
+ Task Request
 Using the rules and column logic above, help me generate a new automated database creation schema, data parsing rules, or interface templates for our next manufacturing part family.
