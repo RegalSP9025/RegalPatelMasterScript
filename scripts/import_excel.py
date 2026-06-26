@@ -2,10 +2,8 @@ import os
 import glob
 from datetime import datetime
 
-# Clean imports with clear troubleshooting messages
 try:
     import psycopg2
-    from psycopg2.extras import RealDictCursor
 except ImportError:
     raise ImportError("psycopg2 is required. Run 'python -m pip install psycopg2-binary'")
 
@@ -19,7 +17,6 @@ try:
 except ImportError:
     def load_dotenv(): return None
 
-# Load local environment variables from Step 3
 load_dotenv()
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -27,7 +24,6 @@ ROOT_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, os.pardir))
 TEMPLATES_DIR = os.path.join(ROOT_DIR, "templates")
 
 def get_template_filepath():
-    """Finds your calibration template inside the templates directory."""
     exact = os.path.join(TEMPLATES_DIR, "calibration_template_v2.xlsx")
     if os.path.exists(exact):
         return exact
@@ -36,7 +32,7 @@ def get_template_filepath():
         return candidates[0]
     raise FileNotFoundError(f"Could not locate an Excel template workbook in {TEMPLATES_DIR}")
 
-# 0-indexed column layout mapping exactly to your Excel sheets horizontal structure
+# Updated 0-indexed column blueprint capturing ALL raw measurement variables
 COL = {
     "gage_type":           0,
     "sn_gage_used_to_cal": 1,
@@ -49,14 +45,22 @@ COL = {
     "model_number":        8,
     "calibrated_by":       9,
     "checkpoint_a_value": 10,
+    "a_1":                 11,
+    "a_2":                 12,
+    "a_3":                 13,
     "checkpoint_b_value": 14,
+    "b_1":                 15,
+    "b_2":                 16,
+    "b_3":                 17,
     "checkpoint_c_value": 18,
+    "c_1":                 19,
+    "c_2":                 20,
+    "c_3":                 21,
     "status":             22,
     "notes":              23,
 }
 
 def get_db_connection():
-    """Establishes a pipe to your local Postgres CalTest instance."""
     return psycopg2.connect(
         host=os.getenv("DB_HOST", "localhost"),
         port=os.getenv("DB_PORT", 5432),
@@ -66,7 +70,6 @@ def get_db_connection():
     )
 
 def parse_date(val):
-    """Safely normalizes Excel date formatting into PostgreSQL date blocks."""
     if val is None:
         return None
     if hasattr(val, "date"):
@@ -81,29 +84,39 @@ def parse_date(val):
 def str_val(val):
     return str(val).strip() if val is not None else None
 
+def float_val(val):
+    """Safely converts Excel cell values to floats for numeric database storage."""
+    if val is None or str(val).strip() == "":
+        return None
+    try:
+        return float(val)
+    except ValueError:
+        return None
+
 def read_excel_data(filepath):
-    """Parses row lines dynamically starting right under the row header."""
     wb = openpyxl.load_workbook(filepath, data_only=True)
     ws = wb["MAIN_INPUT"]
     extracted_rows = []
-    
     for row in ws.iter_rows(min_row=2, values_only=True):
-        # Prevent tracking or blowing up on trailing empty sheet lines
         if not row or len(row) <= COL["serial_number"] or not row[COL["serial_number"]]:
             continue
         extracted_rows.append(row)
     return extracted_rows
 
 def upsert_to_local_postgres(cur, row):
-    """Inserts a gauge record or overwrites it on a matching serial number conflict."""
+    """Inserts or updates a full gauge profile, including all raw trail readings."""
     cur.execute("""
         INSERT INTO public."RegalPatelTest" (
             serial_number, gage_type, manufacturer, model_number, graduation,
             procedure_name, procedure_number, sn_gage_used_to_cal, 
             date_calibrated, calibrated_by, checkpoint_a_value, 
-            checkpoint_b_value, checkpoint_c_value, status, notes, updated_at
+            checkpoint_b_value, checkpoint_c_value, status, notes,
+            a_1, a_2, a_3, b_1, b_2, b_3, c_1, c_2, c_3, updated_at
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+        VALUES (
+            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+            %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW()
+        )
         ON CONFLICT (serial_number) DO UPDATE SET
             gage_type           = EXCLUDED.gage_type,
             manufacturer        = EXCLUDED.manufacturer,
@@ -119,6 +132,15 @@ def upsert_to_local_postgres(cur, row):
             checkpoint_c_value  = EXCLUDED.checkpoint_c_value,
             status              = EXCLUDED.status,
             notes               = EXCLUDED.notes,
+            a_1                 = EXCLUDED.a_1,
+            a_2                 = EXCLUDED.a_2,
+            a_3                 = EXCLUDED.a_3,
+            b_1                 = EXCLUDED.b_1,
+            b_2                 = EXCLUDED.b_2,
+            b_3                 = EXCLUDED.b_3,
+            c_1                 = EXCLUDED.c_1,
+            c_2                 = EXCLUDED.c_2,
+            c_3                 = EXCLUDED.c_3,
             updated_at          = NOW()
         RETURNING serial_number;
     """, (
@@ -137,11 +159,20 @@ def upsert_to_local_postgres(cur, row):
         str_val(row[COL["checkpoint_c_value"]]),
         str_val(row[COL["status"]]) or "READY",
         str_val(row[COL["notes"]]),
+        float_val(row[COL["a_1"]]),
+        float_val(row[COL["a_2"]]),
+        float_val(row[COL["a_3"]]),
+        float_val(row[COL["b_1"]]),
+        float_val(row[COL["b_2"]]),
+        float_val(row[COL["b_3"]]),
+        float_val(row[COL["c_1"]]),
+        float_val(row[COL["c_2"]]),
+        float_val(row[COL["c_3"]]),
     ))
     return cur.fetchone()[0]
 
 def main():
-    print("--- 🚀 Starting Local Calibration Pipeline Sync ---")
+    print("--- 🚀 Starting Local Calibration Pipeline Sync (Full Metrics Mode) ---")
     try:
         filepath = get_template_filepath()
     except FileNotFoundError as e:
@@ -157,7 +188,7 @@ def main():
         conn = get_db_connection()
         cur = conn.cursor()
     except Exception as conn_error:
-        print(f"[FATAL CONNECTION ERROR]: Could not link to Postgres port. Verify your password in .env.\nDetail: {conn_error}")
+        print(f"[FATAL CONNECTION ERROR]: Verify your password in .env.\nDetail: {conn_error}")
         return
 
     success_count = 0
@@ -166,7 +197,7 @@ def main():
         try:
             synchronized_serial = upsert_to_local_postgres(cur, row)
             conn.commit()
-            print(f"  ✓ Synchronized Serial: {synchronized_serial}")
+            print(f"  ✓ Synchronized Serial: {synchronized_serial} with all trials.")
             success_count += 1
         except Exception as row_error:
             conn.rollback()
@@ -174,7 +205,7 @@ def main():
 
     cur.close()
     conn.close()
-    print(f"\n--- 🎉 Pipeline Complete: Successfully updated {success_count}/{len(rows)} metrics in your local database! ---")
+    print(f"\n--- 🎉 Pipeline Complete: Successfully updated {success_count}/{len(rows)} complete records in your local database! ---")
 
 if __name__ == "__main__":
     main()

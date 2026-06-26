@@ -1,0 +1,97 @@
+import os
+import streamlit as st
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from dotenv import load_dotenv
+
+# Load local environmental variables
+load_dotenv()
+
+# Page Title & Layout Configurations
+st.set_page_config(page_title="Regal Calibration Registry", layout="wide")
+
+# Title Banner
+st.title("🛡️ Regal Calibration Audit System")
+st.markdown("### Search and verify asset calibration logs instantaneously.")
+st.divider()
+
+# Secure & Optimized Database Connection Engine
+@st.cache_resource
+def init_connection():
+    """Maintains a single persistent connection pool to CalTest."""
+    return psycopg2.connect(
+        host=os.getenv("DB_HOST", "localhost"),
+        port=os.getenv("DB_PORT", 5432),
+        dbname=os.getenv("DB_NAME", "CalTest"),
+        user=os.getenv("DB_USER", "postgres"),
+        password=os.getenv("DB_PASSWORD")
+    )
+
+try:
+    conn = init_connection()
+except Exception as e:
+    st.error(f"❌ Database Connection Failure: {e}")
+    st.stop()
+
+#  Interactive Table Selection Slicer
+target_table = st.selectbox(
+    "Select Asset Category:",
+    ["RegalPatelTest"] # We can add more table names here later as you build them!
+)
+
+#  The Auditor Search Bar
+search_serial = st.text_input("🔍 Enter Gauge Serial Number to Audit:", placeholder="e.g. 17139").strip()
+
+if search_serial:
+    # SQL query utilizing RealDictCursor so rows act like searchable dictionaries
+    query = f'SELECT * FROM public."{target_table}" WHERE serial_number = %s;'
+    
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(query, (search_serial,))
+        result = cur.fetchone()
+        
+    if result:
+        st.success(f"✅ Record Found for Serial Number: {search_serial}")
+        
+        # Split screen into clean visual layout cards
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("📋 Asset Identity Details")
+            st.write(f"**Gage Type:** {result['gage_type']}")
+            st.write(f"**Manufacturer:** {result['manufacturer']}")
+            st.write(f"**Model Number:** {result['model_number']}")
+            st.write(f"**Graduation/Size:** {result['graduation']}")
+            st.write(f"**Calibrated By:** {result['calibrated_by']}")
+            st.write(f"**Date Calibrated:** {result['date_calibrated']}")
+            st.write(f"**Last Sync Updated:** {result['updated_at']}")
+            
+        with col2:
+            st.subheader("🔬 Calibration Target & Trial Metrics")
+            st.write(f"**Procedure:** {result['procedure_name']} ({result['procedure_number']})")
+            st.write(f"**Master S/N Used:** {result['sn_gage_used_to_cal']}")
+            
+            # Displays the exact status with color-coding
+            status = str(result['status']).upper()
+            if "READY" in status or "PASS" in status:
+                st.metric(label="ASSET STATUS", value=status, delta="Passed Inspection")
+            else:
+                st.metric(label="ASSET STATUS", value=status, delta="Requires Attention", delta_color="inverse")
+                
+        #  Full Audit Trail Expansion Box (Perfect for the auditors!)
+        st.divider()
+        with st.expander("👁️ View Full Raw Trial Run Spreadsheet Matrix", expanded=True):
+            # Formats your measurement checkpoints cleanly into an interactive data matrix table
+            matrix_data = {
+                "Checkpoint Nominal": [result['checkpoint_a_value'], result['checkpoint_b_value'], result['checkpoint_c_value']],
+                "Trial 1 Reading": [result['a_1'], result['b_1'], result['c_1']],
+                "Trial 2 Reading": [result['a_2'], result['b_2'], result['c_2']],
+                "Trial 3 Reading": [result['a_3'], result['b_3'], result['c_3']]
+            }
+            st.table(matrix_data)
+            
+        if result['notes']:
+            st.info(f"📝 **Inspector Notes:** {result['notes']}")
+            
+    else:
+        st.warning(f"⚠️ No calibration records found in table '{target_table}' for Serial Number: '{search_serial}'")
