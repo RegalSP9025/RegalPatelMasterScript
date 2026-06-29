@@ -115,16 +115,34 @@ if search_serial:
             else:
                 st.metric(label="ASSET OPERATIONAL STATUS", value=status_val, delta="Requires Attention", delta_color="inverse")
                 
-        # 📊 Dynamic Matrix Generation Conditional Block
-        # Only renders the matrix table if checkpoint values exist in the current database row profile
-        if 'checkpoint_a_value' in data_dict:
+# 📊 New Dynamic Matrix Generation Block
+        # Automatically looks for trial columns like a_1, b_1 or 0.010_1, 0.020_1 dynamically!
+        trial_1_data = {}
+        trial_2_data = {}
+        trial_3_data = {}
+        
+        for col_name, col_value in data_dict.items():
+            if col_name.endswith('_1'):
+                nominal = col_name.rstrip('_1').replace('_', '.')
+                trial_1_data[nominal] = col_value
+            elif col_name.endswith('_2'):
+                nominal = col_name.rstrip('_2').replace('_', '.')
+                trial_2_data[nominal] = col_value
+            elif col_name.endswith('_3'):
+                nominal = col_name.rstrip('_3').replace('_', '.')
+                trial_3_data[nominal] = col_value
+
+        if trial_1_data:
             st.divider()
             with st.expander("👁️ View Full Raw Trial Run Spreadsheet Matrix", expanded=True):
+                # Sort nominal checkpoints numerically
+                sorted_nominals = sorted(trial_1_data.keys(), key=lambda x: float(x) if x.replace('.','',1).isdigit() else x)
+                
                 matrix_data = {
-                    "Checkpoint Nominal": [data_dict.get('checkpoint_a_value'), data_dict.get('checkpoint_b_value'), data_dict.get('checkpoint_c_value')],
-                    "Trial 1 Reading": [data_dict.get('a_1'), data_dict.get('b_1'), data_dict.get('c_1')],
-                    "Trial 2 Reading": [data_dict.get('a_2'), data_dict.get('b_2'), data_dict.get('c_2')],
-                    "Trial 3 Reading": [data_dict.get('a_3'), data_dict.get('b_3'), data_dict.get('c_3')]
+                    "Checkpoint Nominal": sorted_nominals,
+                    "Trial 1 Reading": [trial_1_data[n] for n in sorted_nominals],
+                    "Trial 2 Reading": [trial_2_data.get(n, None) for n in sorted_nominals],
+                    "Trial 3 Reading": [trial_3_data.get(n, None) for n in sorted_nominals]
                 }
                 st.table(matrix_data)
             
