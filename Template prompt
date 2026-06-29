@@ -1,0 +1,31 @@
+# TASK: Generate a Standardized Calibration Excel Template from a Physical Document
+
+I have attached an image of a physical paper worksheet used for logging manufacturing equipment calibrations. 
+
+I need you to act as a Data Engineer and design the layout for a matching Excel template file. This spreadsheet will be parsed by an automated Python script and loaded directly into a PostgreSQL database. Because the pipeline is automated, the formatting must be 100% precise to avoid breaking the script.
+
+Please analyze the attached image and provide the blueprint for the Excel sheet based on the structural rules below.
+
+---
+
+## 🛠️ CRITICAL LOGICAL & FORMATTING RULES
+
+1. **The "MAIN_INPUT" Sheet Name:** The workbook must contain a primary sheet tab named exactly `MAIN_INPUT` in all capital letters.
+2. **Row 1 is the Column Header Row:** Row 1 must contain the database-friendly column headers. 
+3. **Snake_Case Naming Convention:** All header names in Row 1 must be strictly lowercase, contain no spaces, and use underscores `_` to separate words (e.g., `serial_number`, `date_calibrated`, `sn_gage_used_to_cal`). Do not use slashes, dashes, or parentheses.
+4. **The Primary Key Constraint:** The sheet MUST include a `serial_number` column. This acts as the unique identifier for our database's data injection process.
+5. **Flattening the Metadata:** Any single data field written at the top of the paper (like Gage Type, Procedure Used, or Master S/N) must be flattened into its own column so it repeats on every single row of asset data.
+6. **Data Type Strictness:** - Measurement checkpoint or trial columns must only accept raw numbers (floats/decimals).
+   - Any checkbox options on paper (like ACCEPT/REJECT/ADJUST) must be collapsed into a single text column named `finding` or `status`.
+
+---
+
+## 📋 OUTPUT REQUESTED
+
+Based on the image provided, please output a clean markdown table showing exactly how Row 1 of the new Excel sheet should look. Use this format:
+
+| Column Index | Excel Header Name (Row 1) | Expected Data Type | Reference From Paper Image |
+| :---: | :--- | :--- | :--- |
+| **0** | `example_header` | Text / Numeric / Date | Description of where this is on the paper |
+
+Please generate the column map for this attached worksheet now.
