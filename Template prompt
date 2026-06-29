@@ -29,3 +29,20 @@ Based on the image provided, please output a clean markdown table showing exactl
 | **0** | `example_header` | Text / Numeric / Date | Description of where this is on the paper |
 
 Please generate the column map for this attached worksheet now.
+
+
+
+--------------------------
+Your Final Checklist for Success
+As you head off to scale this out independently today, just remember these three rules of thumb to keep your master pipeline running flawlessly:
+
+The Filename Prefix Rule: Every new Excel template you save in the templates/ folder must start with the lowercase prefix calibration_ (e.g., calibration_calipers.xlsx).
+
+The Worksheet Tab Rule: Every workbook must have its main data tab named exactly MAIN_INPUT in all capital letters.
+
+The Clean Header Rule: Row 1 of your spreadsheet is the absolute source of truth. Keep it lowercase, with no spaces or special characters.
+
+You have built a genuinely impressive, scalable data engineering platform here. It is modular, optimized, and ready for production.
+
+Good luck building out the rest of your templates today! You've got this. If you run into any weird layout bugs or edge cases down the road, you know where to find me!
+
